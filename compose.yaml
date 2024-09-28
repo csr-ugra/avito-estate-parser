@@ -1,0 +1,25 @@
+services:
+  browserless:
+    image: browserless/chrome:latest
+    hostname: browserless
+    environment:
+      TOKEN: ${BROWSERLESS_TOKEN}
+      DEBUG: browserless:*
+      CONCURRENT: 5
+      TIMEOUT: 60000
+      QUEUED: 5
+      HOST: 0.0.0.0
+      PORT: 3333
+    restart: unless-stopped
+    ports:
+      - "3333:3333"
+
+  avito:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - browserless
+    restart: unless-stopped
+    environment:
+      BROWSERLESS_TOKEN: ${BROWSERLESS_TOKEN}
