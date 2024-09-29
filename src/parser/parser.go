@@ -7,28 +7,21 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
 	"github.com/csr-ugra/avito-estate-parser/src/db"
+	"github.com/csr-ugra/avito-estate-parser/src/util"
 	"github.com/uptrace/bun"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const devtoolWebsocketUrlEnvName = "DEVTOOLS_WEBSOCKET_URL"
-
-func Start(ctx context.Context, connection bun.IDB) {
-	devtoolsWsURL := os.Getenv(devtoolWebsocketUrlEnvName)
-	if devtoolsWsURL == "" {
-		log.Fatalf("environment variable %s is not set", devtoolWebsocketUrlEnvName)
-	}
-
+func Start(ctx context.Context, connection bun.IDB, config *util.Config) {
 	tasks, err := loadTasks(ctx, connection)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	allocatorCtx, allocatorCancel := chromedp.NewRemoteAllocator(ctx, devtoolsWsURL, chromedp.NoModifyURL)
+	allocatorCtx, allocatorCancel := chromedp.NewRemoteAllocator(ctx, config.DevtoolsWebsocketUrl.Value, chromedp.NoModifyURL)
 	defer allocatorCancel()
 
 	chromeCtx, chromeCancel := chromedp.NewContext(allocatorCtx)

@@ -3,32 +3,16 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"github.com/csr-ugra/avito-estate-parser/src/util"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
-	"os"
 )
 
-const connectionStringEnvName = "DB_CONNECTION_STRING"
-
-func getConnectionString() (string, error) {
-	if connectionString, ok := os.LookupEnv(connectionStringEnvName); ok {
-		return connectionString, nil
-	}
-
-	return "", fmt.Errorf("make sure that env variable %s is set and in DSN format", connectionStringEnvName)
-}
-
-func GetConnection() (*bun.DB, error) {
-	dsn, err := getConnectionString()
-	if err != nil {
-		return nil, err
-	}
-
-	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-	db := bun.NewDB(sqldb, pgdialect.New())
+func GetConnection(config *util.Config) (*bun.DB, error) {
+	sqlDb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(config.DbConnectionString.Value)))
+	db := bun.NewDB(sqlDb, pgdialect.New())
 
 	db.AddQueryHook(bundebug.NewQueryHook(
 		bundebug.WithEnabled(false),
@@ -37,7 +21,7 @@ func GetConnection() (*bun.DB, error) {
 		// BUNDEBUG=2 logs all queries
 		bundebug.FromEnv("BUNDEBUG")))
 
-	if err = db.Ping(); err != nil {
+	if err := db.Ping(); err != nil {
 		return nil, err
 	}
 
