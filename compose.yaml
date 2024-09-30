@@ -1,18 +1,23 @@
+volumes:
+  cache:
+
 services:
   browserless:
-    image: browserless/chrome:latest
+    image: ghcr.io/browserless/chromium
     hostname: browserless
     environment:
       TOKEN: ${BROWSERLESS_TOKEN}
-      DEBUG: browserless:*
-      CONCURRENT: 5
-      TIMEOUT: 60000
-      QUEUED: 5
-      HOST: 0.0.0.0
-      PORT: 3333
+#      PORT: 3000
+      TIMEOUT: 600000
+#      QUEUED: 5
+#      CONCURRENT: 5
+#      DEBUG: -*
+      DATA_DIR: /tmp
     restart: unless-stopped
+    volumes:
+      - cache:/tmp
     ports:
-      - "3333:3333"
+      - "3000:3000"
 
   avito:
     build:

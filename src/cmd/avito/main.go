@@ -12,6 +12,9 @@ import (
 
 func main() {
 	config := util.GetConfig()
+
+	util.InitLogger(config)
+
 	connection, err := db.GetConnection(config)
 	if err != nil {
 		log.Fatalln(err)

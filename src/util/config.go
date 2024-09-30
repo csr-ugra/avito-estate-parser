@@ -12,28 +12,49 @@ type configValue struct {
 	envVarName   string
 	required     bool
 	errorMessage string
+	defaultValue string
 	Value        string
 }
 
 type Config struct {
 	DevtoolsWebsocketUrl configValue
 	DbConnectionString   configValue
+	SeqUrl               configValue
+	SeqToken             configValue
+	Environment          configValue
 }
 
 func NewConfig() *Config {
 	const devtoolsWebsocketUrlName = "DEVTOOLS_WEBSOCKET_URL"
-	const dbConnectionString = "DEVTOOLS_WEBSOCKET_URL"
+	const dbConnectionStringName = "DB_CONNECTION_STRING"
+	const seqUrlName = "SEQ_URL"
+	const seqTokenName = "SEQ_TOKEN"
+	const environmentName = "ENVIRONMENT"
+
 	return &Config{
 		DevtoolsWebsocketUrl: configValue{
-			envVarName:   devtoolsWebsocketUrlName,
-			required:     true,
-			errorMessage: fmt.Sprintf("environment variable %s is not set", devtoolsWebsocketUrlName),
+			envVarName: devtoolsWebsocketUrlName,
+			required:   true,
 		},
 		DbConnectionString: configValue{
-			envVarName:   dbConnectionString,
+			envVarName:   dbConnectionStringName,
 			required:     true,
-			errorMessage: fmt.Sprintf("make sure that env variable %s is set and in DSN format", dbConnectionString),
-		}}
+			errorMessage: fmt.Sprintf("make sure that environment variable %s is set and in DSN format", dbConnectionStringName),
+		},
+		SeqUrl: configValue{
+			envVarName: seqUrlName,
+			required:   true,
+		},
+		SeqToken: configValue{
+			envVarName: seqTokenName,
+			required:   true,
+		},
+		Environment: configValue{
+			envVarName:   environmentName,
+			required:     false,
+			defaultValue: "development",
+		},
+	}
 }
 
 var config *Config
@@ -49,21 +70,38 @@ func GetConfig() *Config {
 func load() *Config {
 	config := NewConfig()
 
-	if err := populateEnv(config.DevtoolsWebsocketUrl); err != nil {
+	if err := populateEnv(&config.DevtoolsWebsocketUrl); err != nil {
 		log.Fatal(err)
 	}
-	if err := populateEnv(config.DbConnectionString); err != nil {
+	if err := populateEnv(&config.DbConnectionString); err != nil {
+		log.Fatal(err)
+	}
+	if err := populateEnv(&config.SeqUrl); err != nil {
+		log.Fatal(err)
+	}
+	if err := populateEnv(&config.SeqToken); err != nil {
+		log.Fatal(err)
+	}
+	if err := populateEnv(&config.Environment); err != nil {
 		log.Fatal(err)
 	}
 
 	return config
 }
 
-func populateEnv(m configValue) (err error) {
+func populateEnv(m *configValue) (err error) {
 	v := os.Getenv(m.envVarName)
 
 	if v == "" && m.required {
-		return errors.New(m.errorMessage)
+		if m.errorMessage != "" {
+			return errors.New(m.errorMessage)
+		}
+
+		return fmt.Errorf("environment variable %s is not set", m.envVarName)
+	}
+
+	if v == "" && m.defaultValue != "" {
+		m.Value = m.defaultValue
 	}
 
 	m.Value = v
