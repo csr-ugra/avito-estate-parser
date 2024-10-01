@@ -46,12 +46,20 @@ func GetTargets(ctx context.Context, connection bun.IDB) (targets []*EstateTarge
 	return targets, err
 }
 
-func SaveValues(ctx context.Context, connection bun.IDB, values []*EstateParsingValueModel) error {
+func SaveValues(ctx context.Context, connection bun.IDB, values []*EstateParsingValueModel) (affectedCount int, err error) {
 	if len(values) == 0 {
-		return nil
+		return 0, nil
 	}
 
-	_, err := connection.NewInsert().Model(&values).Exec(ctx)
+	res, err := connection.NewInsert().Model(&values).On("CONFLICT DO NOTHING").Exec(ctx)
+	if err != nil {
+		return 0, err
+	}
 
-	return err
+	c, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(c), err
 }

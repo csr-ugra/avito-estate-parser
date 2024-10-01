@@ -157,7 +157,7 @@ func LoadTasks(ctx context.Context, connection bun.IDB) (tasks []*ParsingTask, e
 	return tasks, nil
 }
 
-func SaveTaskResults(ctx context.Context, connection bun.IDB, results []*ParsingTaskResult) error {
+func SaveTaskResults(ctx context.Context, connection bun.IDB, results []*ParsingTaskResult) (int, error) {
 	models := make([]*db.EstateParsingValueModel, 0, len(results))
 	for _, result := range results {
 		models = append(models, &db.EstateParsingValueModel{
@@ -169,10 +169,10 @@ func SaveTaskResults(ctx context.Context, connection bun.IDB, results []*Parsing
 		})
 	}
 
-	err := db.SaveValues(ctx, connection, models)
+	insertedCount, err := db.SaveValues(ctx, connection, models)
 	if err != nil {
-		return fmt.Errorf("error savings task results: %v", err)
+		return 0, fmt.Errorf("error savings task results: %v", err)
 	}
 
-	return nil
+	return insertedCount, nil
 }

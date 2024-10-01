@@ -7,6 +7,7 @@ import (
 	"github.com/csr-ugra/avito-estate-parser/internal/log"
 	"github.com/csr-ugra/avito-estate-parser/internal/parser_rod"
 	"github.com/csr-ugra/avito-estate-parser/internal/util"
+	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
 )
 
@@ -37,11 +38,14 @@ func Run(ctx context.Context, connection bun.IDB, config *util.Config) error {
 
 	logger.Debug("saving parsing results to db")
 	if !dryRun {
-		err = internal.SaveTaskResults(ctx, connection, results)
+		affectedCount, err := internal.SaveTaskResults(ctx, connection, results)
 		if err != nil {
 			return err
 		}
-		logger.WithField("ResultCount", len(results)).Info("saved parsing results to db")
+		logger.WithFields(logrus.Fields{
+			"ResultCount":      len(results),
+			"AffectedRowCount": affectedCount,
+		}).Info("saved parsing results to db")
 	}
 
 	return nil
