@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
-	"github.com/csr-ugra/avito-estate-parser/src/util"
+	"github.com/csr-ugra/avito-estate-parser/internal/util"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"

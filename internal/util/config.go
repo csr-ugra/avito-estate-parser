@@ -33,8 +33,9 @@ func NewConfig() *Config {
 
 	return &Config{
 		DevtoolsWebsocketUrl: configValue{
-			envVarName: devtoolsWebsocketUrlName,
-			required:   true,
+			envVarName:   devtoolsWebsocketUrlName,
+			required:     false,
+			defaultValue: "ws://127.0.0.1:7317",
 		},
 		DbConnectionString: configValue{
 			envVarName:   dbConnectionStringName,

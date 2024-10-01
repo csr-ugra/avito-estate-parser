@@ -1,5 +1,5 @@
 # Install dependencies
-FROM golang:1.22-bookworm AS deps
+FROM golang:1.22.7-bookworm AS deps
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN go mod download
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 # Build
-FROM golang:1.23.1-bookworm AS build
+FROM golang:1.22.7-bookworm AS build
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ COPY . .
 # ENV CGO_ENABLED=0
 # ENV GOOS=linux
 
-RUN go build -gcflags="all=-N -l" -o ./bin/main ./src/cmd/avito/main.go
+RUN go build -gcflags="all=-N -l" -o ./bin/main ./main.go
 
 # Run
 FROM debian:bookworm-slim
@@ -36,4 +36,4 @@ COPY --from=build /go/bin/dlv ./dlv
 COPY --from=build /app/bin/main .
 
 
-CMD ["./dlv", "--listen=:40000", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "./main"]
+CMD ["./dlv", "--listen=:40000", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "./main", "--", "-dry"]

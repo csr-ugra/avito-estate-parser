@@ -1,4 +1,4 @@
-package parser
+package parser_chromedp
 
 import (
 	"testing"

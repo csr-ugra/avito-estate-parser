@@ -1,17 +1,21 @@
-package util
+package log
 
 import (
+	"github.com/csr-ugra/avito-estate-parser/internal/util"
+	"github.com/google/uuid"
 	"github.com/nullseed/logruseq"
 	"github.com/sirupsen/logrus"
 	"os"
 )
 
-var logger logrus.Logger
+var entry *logrus.Entry
 
-func InitLogger(config *Config) {
+type Logger = *logrus.Entry
+
+func InitLogger(config *util.Config) {
 	seqHook := logruseq.NewSeqHook(config.SeqUrl.Value, logruseq.OptionAPIKey(config.SeqToken.Value))
 
-	logger = logrus.Logger{
+	logger := logrus.Logger{
 		Out:   os.Stdout,
 		Hooks: make(logrus.LevelHooks),
 		Level: logrus.DebugLevel,
@@ -28,8 +32,15 @@ func InitLogger(config *Config) {
 			QuoteEmptyFields: true,
 		}
 	}
+
+	entry = logger.WithField("TraceId", uuid.New().String())
 }
 
-func GetLogger() *logrus.Logger {
-	return &logger
+func AddGlobalField(name string, value interface{}) Logger {
+	entry = entry.WithField(name, value)
+	return entry
+}
+
+func GetLogger() Logger {
+	return entry
 }

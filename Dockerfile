@@ -1,5 +1,5 @@
 # Install dependencies
-FROM golang:1.22-bookworm AS deps
+FROM golang:1.22.7-bookworm AS deps
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Build
-FROM golang:1.23.1-bookworm AS build
+FROM golang:1.22.7-bookworm AS build
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ COPY . .
 # ENV CGO_ENABLED=0
 # ENV GOOS=linux
 
-RUN go build -ldflags="-w -s" -o ./bin/main ./src/cmd/avito/main.go
+RUN go build -ldflags="-w -s" -o ./bin/main ./main.go
 
 # Run
 FROM debian:bookworm-slim

@@ -1,4 +1,4 @@
-package parser
+package parser_chromedp
 
 import (
 	"context"
@@ -7,31 +7,25 @@ import (
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/input"
 	"github.com/chromedp/chromedp"
-	"github.com/csr-ugra/avito-estate-parser/src/db"
-	"github.com/csr-ugra/avito-estate-parser/src/util"
+	"github.com/csr-ugra/avito-estate-parser/internal"
+	"github.com/csr-ugra/avito-estate-parser/internal/log"
+	"github.com/csr-ugra/avito-estate-parser/internal/selector"
+	"github.com/csr-ugra/avito-estate-parser/internal/util"
 	"github.com/sirupsen/logrus"
-	"github.com/uptrace/bun"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func Start(ctx context.Context, connection bun.IDB, config *util.Config) {
-	logger := util.GetLogger()
-
-	tasks, err := loadTasks(ctx, connection)
-	if err != nil {
-		logger.Fatalln(err)
-	}
+func Start(ctx context.Context, config *util.Config, tasks []*internal.ParsingTask) (results []*internal.ParsingTaskResult, err error) {
+	logger := *log.GetLogger()
+	results = make([]*internal.ParsingTaskResult, 0, len(tasks))
 
 	allocatorCtx, allocatorCancel := chromedp.NewRemoteAllocator(ctx, config.DevtoolsWebsocketUrl.Value, chromedp.NoModifyURL)
 	defer allocatorCancel()
 
-	//defer chromeCancel()
-
-	results := make([]*ParsingTaskResult, 0, len(tasks))
 	for _, task := range tasks {
-		const retryCount = 3
+		const maxRetryCount = 3
 
 		taskLogger := logger.WithFields(logrus.Fields{
 			"TaskId":   task.Id,
@@ -40,12 +34,10 @@ func Start(ctx context.Context, connection bun.IDB, config *util.Config) {
 		})
 
 		attempt := 1
-		var result *ParsingTaskResult
+		var result *internal.ParsingTaskResult
 
-		for attempt <= retryCount {
+		for attempt <= maxRetryCount {
 			chromeCtx, chromeCancel := chromedp.NewContext(allocatorCtx)
-			result = nil
-			err = nil
 
 			result, err = runTask(chromeCtx, task, taskLogger)
 			if err != nil {
@@ -63,7 +55,7 @@ func Start(ctx context.Context, connection bun.IDB, config *util.Config) {
 			break
 		}
 
-		if err != nil {
+		if result != nil {
 			results = append(results, result)
 
 			taskLogger.
@@ -78,9 +70,7 @@ func Start(ctx context.Context, connection bun.IDB, config *util.Config) {
 		time.Sleep(2 * time.Second)
 	}
 
-	//if err = saveTaskResults(ctx, connection, results); err != nil {
-	//	logger.Fatalln(fmt.Errorf("save task results error: %w", err))
-	//}
+	return results, err
 }
 
 func indexOfTheWeekInMonth(now time.Time) int {
@@ -90,64 +80,7 @@ func indexOfTheWeekInMonth(now time.Time) int {
 	return thisWeek - beginningWeek
 }
 
-func loadTasks(ctx context.Context, connection bun.IDB) (tasks []*ParsingTask, err error) {
-	locations, err := db.GetLocations(ctx, connection)
-	if err != nil {
-		return nil, err
-	}
-	if len(locations) == 0 {
-		return nil, errors.New("no locations specified")
-	}
-
-	targets, err := db.GetTargets(ctx, connection)
-	if err != nil {
-		return nil, err
-	}
-	if len(targets) == 0 {
-		return nil, errors.New("no targets specified")
-	}
-
-	taskList, err := db.GetTasks(ctx, connection)
-	if err != nil {
-		return nil, err
-	}
-	if len(taskList) == 0 {
-		return nil, errors.New("no tasks specified")
-	}
-
-	tasks = make([]*ParsingTask, 0, len(taskList))
-	for _, task := range taskList {
-		dateStart := time.Now().Add(24 * time.Hour)
-		dateEnd := time.Now().Add(48 * time.Hour)
-		t, err := NewParsingTask(task, locations, targets, dateStart, dateEnd)
-		if err != nil {
-			return nil, fmt.Errorf("error creating parsing task: %v", err)
-		}
-
-		tasks = append(tasks, t)
-	}
-
-	return tasks, nil
-}
-
-func saveTaskResults(ctx context.Context, connection bun.IDB, results []*ParsingTaskResult) error {
-	models := make([]*db.EstateParsingValueModel, 0, len(results))
-	for _, result := range results {
-		models = append(models, &db.EstateParsingValueModel{
-			TaskId:           result.Task.Id,
-			DateStart:        result.Task.DateStart,
-			DateEnd:          result.Task.DateEnd,
-			EstateTotalCount: result.EstateTotalCount,
-			EstateFreeCount:  result.EstateFreeCount,
-		})
-	}
-
-	err := db.SaveValues(ctx, connection, models)
-
-	return fmt.Errorf("error savings task results: %w", err)
-}
-
-func runTask(ctx context.Context, task *ParsingTask, log logrus.FieldLogger) (result *ParsingTaskResult, err error) {
+func runTask(ctx context.Context, task *internal.ParsingTask, log logrus.FieldLogger) (result *internal.ParsingTaskResult, err error) {
 	log.WithField("Url", task.Url).Info("[{TaskId}] navigating to {Url}")
 	if err = chromedp.Run(ctx, chromedp.Navigate(task.Url)); err != nil {
 		return nil, fmt.Errorf("error navigating to %s: %v", task.Url, err)
@@ -166,7 +99,7 @@ func runTask(ctx context.Context, task *ParsingTask, log logrus.FieldLogger) (re
 		return nil, fmt.Errorf("error getting page title: %v", err)
 	}
 
-	if normalizeStr(pageTitle) != normalizeStr(task.ValidateTitle) {
+	if util.NormalizeStr(pageTitle) != util.NormalizeStr(task.ValidateTitle) {
 		return nil, fmt.Errorf("page title doesn't match expected: %s != %s", pageTitle, task.ValidateTitle)
 	}
 	log.Info("[{TaskId}] page title matches expected")
@@ -183,14 +116,13 @@ func runTask(ctx context.Context, task *ParsingTask, log logrus.FieldLogger) (re
 
 	// select dates on calendar if calendar is present
 	// data-marker begins with "params[" and ends with "/day(%d)"
-	const calendarButtonSelectorTemplate = "td[data-marker^=\"params[\"][data-marker$=\"/day(%d)\"] div[role=button][class*=\"styles-module-day_hoverable-\"]"
-	btnDayStartSelector := fmt.Sprintf(calendarButtonSelectorTemplate, task.DateStart.Day())
-	btnDayEndSelector := fmt.Sprintf(calendarButtonSelectorTemplate, task.DateEnd.Day())
+	btnDayStartSelector := selector.CalendarBtn(task.DateStart)
+	btnDayEndSelector := selector.CalendarBtn(task.DateEnd)
 	buttons := []string{btnDayStartSelector, btnDayEndSelector}
 	for _, selector := range buttons {
 		err = click(ctx, selector)
 
-		if errors.Is(err, &ElementNotFoundError{}) {
+		if errors.Is(err, &internal.ElementNotFoundError{}) {
 			log.WithField("Selector", selector).Warnf("[{TaskId}] calendar button not found, skipping click")
 			continue
 		}
@@ -221,23 +153,13 @@ func runTask(ctx context.Context, task *ParsingTask, log logrus.FieldLogger) (re
 	}
 	log.WithField("FreeCount", estateObjectsCountFree).Info("[{TaskId}] got count of free estate objects of {FreeCount}")
 
-	result = &ParsingTaskResult{
+	result = &internal.ParsingTaskResult{
 		Task:             task,
 		EstateTotalCount: estateObjectsCountTotal,
 		EstateFreeCount:  estateObjectsCountFree,
 	}
 
 	return result, nil
-}
-
-func normalizeStr(input string) string {
-	var result string
-	result = input
-
-	result = strings.Join(strings.Fields(result), "")
-	result = strings.ToLower(result)
-
-	return result
 }
 
 func getNodeCount(ctx context.Context, selector string) (count int, err error) {
@@ -260,14 +182,13 @@ func getNodeCount(ctx context.Context, selector string) (count int, err error) {
 }
 
 func clickSubmitButton(ctx context.Context, log logrus.FieldLogger) (err error) {
-	const submitButtonSelector = "button[data-marker=\"search-filters/submit-button\"]"
 	const submitButtonPrefixText = "показать"
 
 	if err = chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
 		var submitButtonText string
 		for {
 			// get text on submit button
-			err = chromedp.Text(submitButtonSelector, &submitButtonText).Do(ctx)
+			err = chromedp.Text(selector.SubmitFiltersBtn, &submitButtonText).Do(ctx)
 			if err != nil {
 				return err
 			}
@@ -286,7 +207,7 @@ func clickSubmitButton(ctx context.Context, log logrus.FieldLogger) (err error) 
 		return err
 	}
 
-	return click(ctx, submitButtonSelector)
+	return click(ctx, selector.SubmitFiltersBtn)
 }
 
 func getText(ctx context.Context, selector string) (text string, err error) {
@@ -297,7 +218,7 @@ func getText(ctx context.Context, selector string) (text string, err error) {
 	}
 
 	if count == 0 {
-		return "", NewElementNotFoundError(selector)
+		return "", internal.NewElementNotFoundError(selector)
 	}
 
 	err = chromedp.Run(ctx, chromedp.Text(selector, &text))
@@ -312,7 +233,7 @@ func click(ctx context.Context, selector string) (err error) {
 	}
 
 	if count == 0 {
-		return NewElementNotFoundError(selector)
+		return internal.NewElementNotFoundError(selector)
 	}
 
 	err = chromedp.Run(ctx, chromedp.Click(selector, chromedp.AtLeast(1)))
@@ -320,21 +241,17 @@ func click(ctx context.Context, selector string) (err error) {
 }
 
 func getTitle(ctx context.Context) (title string, err error) {
-	const selector = "h1"
-	return getText(ctx, selector)
+	return getText(ctx, selector.PageTitleText)
 }
 
 func getCountFromHeader(ctx context.Context) (count int, err error) {
-	const selector = "span[data-marker=\"page-title/count\"]"
-	countStr, err := getText(ctx, selector)
+	countStr, err := getText(ctx, selector.PageTitleCount)
 
 	return strconv.Atoi(countStr)
 }
 
 func closePopupModal(ctx context.Context) (err error) {
-	const modalSelector = "div[aria-modal=\"true\"][role=\"dialog\"][tabindex=\"-1\"]"
-	const closeButtonSelector = "button[type=\"button\"][aria-label=\"закрыть\"]"
-	var selector = fmt.Sprintf("%s %s", modalSelector, closeButtonSelector)
+	var selector = fmt.Sprintf("%s %s", selector.ModalDialog, selector.ModalDialogCloseBtn)
 
 	count, err := getNodeCount(ctx, selector)
 
@@ -343,7 +260,7 @@ func closePopupModal(ctx context.Context) (err error) {
 	}
 
 	if count == 0 {
-		return NewElementNotFoundError(selector)
+		return internal.NewElementNotFoundError(selector)
 	}
 
 	return chromedp.Run(ctx, input.DispatchKeyEvent(input.KeyDown).WithKey("Escape"))
