@@ -10,6 +10,7 @@ import (
 	"github.com/csr-ugra/avito-estate-parser/internal/util"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
+	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/sirupsen/logrus"
 	"strconv"
@@ -20,9 +21,12 @@ func Start(ctx context.Context, cfg *util.Config, tasks []*internal.ParsingTask)
 	logger := *log.GetLogger()
 	results = make([]*internal.ParsingTaskResult, 0, len(tasks))
 
-	//l := launcher.MustNewManaged(cfg.DevtoolsWebsocketUrl.Value)
-	//browser := rod.New().Client(l.MustClient()).MustConnect()
-	browser := rod.New().MustConnect()
+	// connect to remote
+	l := launcher.MustNewManaged(cfg.DevtoolsWebsocketUrl.Value)
+	browser := rod.New().Client(l.MustClient()).MustConnect()
+
+	// launch default (local if installed, download otherwise)
+	//browser := rod.New().MustConnect()
 	for _, task := range tasks {
 		const maxRetryCount = 3
 
