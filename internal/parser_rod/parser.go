@@ -24,7 +24,7 @@ func Start(ctx context.Context, cfg *util.Config, tasks []*internal.ParsingTask)
 	// local chrome
 	path, _ := launcher.LookPath()
 	u := launcher.New().Bin(path).MustLaunch()
-	browser := rod.New().ControlURL(u).MustConnect()
+	browser := rod.New().SlowMotion(1 * time.Second).Trace(true).ControlURL(u).MustConnect()
 
 	// connect to remote
 	//l := launcher.MustNewManaged(cfg.DevtoolsWebsocketUrl.Value)
