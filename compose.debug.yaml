@@ -2,7 +2,7 @@ volumes:
   seq_data:
 
 services:
-  avito:
+  avito-estate-parser:
     build:
       context: .
       dockerfile: Dockerfile.debug
@@ -22,3 +22,6 @@ services:
 #    restart: unless-stopped
 #    volumes:
 #      - seq_data:/data
+#    networks:
+#      bridge_network:
+#        ipv4_address: 10.5.0.7

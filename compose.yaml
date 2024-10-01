@@ -1,15 +1,13 @@
-volumes:
-  cache:
-
+networks:
+  bridge_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+          gateway: 10.5.0.1
 services:
-  rod:
-    image: ghcr.io/go-rod/rod
-    hostname: rod
-    ports:
-      - "7317:7317"
-
-  avito:
-    image: avito:latest
+  avito-estate-parser:
+    image: avito-estate-parser:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -25,3 +23,15 @@ services:
       SEQ_TOKEN: ${SEQ_TOKEN}
       ENVIRONMENT: ${ENVIRONMENT}
       BUNDEBUG: ${BUNDEBUG}
+    networks:
+      bridge_network:
+        ipv4_address: 10.5.0.5
+
+  rod:
+    image: ghcr.io/go-rod/rod
+    hostname: rod
+    ports:
+      - "7317:7317"
+    networks:
+      bridge_network:
+        ipv4_address: 10.5.0.6
