@@ -15,7 +15,7 @@ services:
       - rod
     restart: on-failure
     env_file:
-      - .env_prod
+      - .env
     environment:
       DEVTOOLS_WEBSOCKET_URL: ${DEVTOOLS_WEBSOCKET_URL}
       DB_CONNECTION_STRING: ${DB_CONNECTION_STRING}
