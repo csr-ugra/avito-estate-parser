@@ -13,7 +13,6 @@ var entry *logrus.Entry
 type Logger = *logrus.Entry
 
 func InitLogger(config *util.Config) {
-	seqHook := logruseq.NewSeqHook(config.SeqUrl.Value, logruseq.OptionAPIKey(config.SeqToken.Value))
 
 	logger := logrus.Logger{
 		Out:   os.Stdout,
@@ -21,7 +20,12 @@ func InitLogger(config *util.Config) {
 		Level: logrus.DebugLevel,
 	}
 
-	logger.AddHook(seqHook)
+	if config.SeqUrl.Value != "" {
+		seqHook := logruseq.NewSeqHook(config.SeqUrl.Value, logruseq.OptionAPIKey(config.SeqToken.Value))
+		logger.AddHook(seqHook)
+	} else {
+		logger.Warn("logger running without seq hook")
+	}
 
 	if config.Environment.Value == "production" {
 		logger.Formatter = &logrus.JSONFormatter{}

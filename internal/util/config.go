@@ -44,11 +44,11 @@ func NewConfig() *Config {
 		},
 		SeqUrl: configValue{
 			envVarName: seqUrlName,
-			required:   true,
+			required:   false,
 		},
 		SeqToken: configValue{
 			envVarName: seqTokenName,
-			required:   true,
+			required:   false,
 		},
 		Environment: configValue{
 			envVarName:   environmentName,
