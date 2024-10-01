@@ -187,6 +187,10 @@ func click(page *rod.Page, selector string) error {
 }
 
 func getCountFromHeader(page *rod.Page) (count int, err error) {
+	elCount := getElementCount(page, selector.PageTitleCount)
+	if elCount == 0 {
+		return 0, nil
+	}
 	countStr, err := getText(page, selector.PageTitleCount)
 
 	return strconv.Atoi(util.NormalizeStr(countStr))
