@@ -67,6 +67,7 @@ func Start(ctx context.Context, cfg *util.Config, tasks []*internal.ParsingTask)
 			}
 
 			results = append(results, result)
+			break
 		}
 
 		time.Sleep(2 * time.Second)
