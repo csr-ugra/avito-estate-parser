@@ -21,9 +21,14 @@ func Start(ctx context.Context, cfg *util.Config, tasks []*internal.ParsingTask)
 	logger := *log.GetLogger()
 	results = make([]*internal.ParsingTaskResult, 0, len(tasks))
 
+	// local chrome
+	path, _ := launcher.LookPath()
+	u := launcher.New().Bin(path).MustLaunch()
+	browser := rod.New().ControlURL(u).MustConnect()
+
 	// connect to remote
-	l := launcher.MustNewManaged(cfg.DevtoolsWebsocketUrl.Value)
-	browser := rod.New().Client(l.MustClient()).MustConnect()
+	//l := launcher.MustNewManaged(cfg.DevtoolsWebsocketUrl.Value)
+	//browser := rod.New().Client(l.MustClient()).MustConnect()
 
 	// launch default (local if installed, download otherwise)
 	//browser := rod.New().MustConnect()
