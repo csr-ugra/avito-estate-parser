@@ -35,9 +35,8 @@ func Run(ctx context.Context, connection bun.IDB, config *util.Config) error {
 		return err
 	}
 
-	if dryRun {
-		logger.Debug("saving parsing results to db")
-	} else {
+	logger.Debug("saving parsing results to db")
+	if !dryRun {
 		err = internal.SaveTaskResults(ctx, connection, results)
 		if err != nil {
 			return err

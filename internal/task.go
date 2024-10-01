@@ -171,5 +171,5 @@ func SaveTaskResults(ctx context.Context, connection bun.IDB, results []*Parsing
 
 	err := db.SaveValues(ctx, connection, models)
 
-	return fmt.Errorf("error savings task results: %w", err)
+	return fmt.Errorf("error savings task results: %v", err)
 }

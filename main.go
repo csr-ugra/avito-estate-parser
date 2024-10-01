@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/csr-ugra/avito-estate-parser/cmd"
 	"github.com/csr-ugra/avito-estate-parser/internal/db"
 	"github.com/csr-ugra/avito-estate-parser/internal/log"
@@ -34,7 +35,8 @@ func main() {
 	err = cmd.Run(ctx, connection, config)
 	if err != nil {
 		logger := log.GetLogger()
-		logger.Fatalln(err)
+		fmt.Println(err.Error())
+		logger.Fatal(err)
 	}
 
 	os.Exit(0)
