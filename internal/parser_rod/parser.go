@@ -89,8 +89,10 @@ func runTask(browser *rod.Browser, task *internal.ParsingTask, log log.Logger) (
 	wait()
 	waitNetwork()
 
-	if err = page.KeyActions().Press(input.Escape).Do(); err != nil {
-		log.Warn("failed to dispatch 'escape' keydown event")
+	for i := 0; i < 3; i++ {
+		if err = page.KeyActions().Press(input.Escape).Do(); err != nil {
+			log.Warn("failed to dispatch 'escape' keydown event")
+		}
 	}
 
 	pageTitle, err := getText(page, selector.PageTitleText)
