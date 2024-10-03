@@ -9,11 +9,14 @@ import (
 	"github.com/csr-ugra/avito-estate-parser/internal/util"
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
+	"time"
 )
 
 func Run(ctx context.Context, connection bun.IDB, config *util.Config) error {
 	var dryRun bool
 	flag.BoolVar(&dryRun, "dry", false, "dry run")
+	flag.String("date-start", time.Now().Add(24*time.Hour).Format(time.DateOnly), "start date, default: tomorrows date")
+	flag.String("date-end", "", "end date, default: the day after 'date-start'")
 	flag.Parse()
 
 	logger := log.GetLogger()

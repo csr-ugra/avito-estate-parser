@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/csr-ugra/avito-estate-parser/internal/db"
 	"github.com/uptrace/bun"
@@ -144,8 +145,37 @@ func LoadTasks(ctx context.Context, connection bun.IDB) (tasks []*ParsingTask, e
 
 	tasks = make([]*ParsingTask, 0, len(taskList))
 	for _, task := range taskList {
-		dateStart := time.Now().Add(24 * time.Hour)
-		dateEnd := time.Now().Add(48 * time.Hour)
+		//dateEnd := time.Now().Add(48 * time.Hour)
+
+		var dateStart time.Time
+		dateStartFlag := flag.Lookup("date-start")
+		if dateStartFlag != nil {
+			if dateStartFlag.Value.String() != "" {
+				dateStart, err = time.Parse(time.DateOnly, dateStartFlag.Value.String())
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				dateStart, err = time.Parse(time.DateOnly, dateStartFlag.DefValue)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		var dateEnd time.Time
+		dateEndFlag := flag.Lookup("date-end")
+		if dateEndFlag != nil {
+			if dateEndFlag.Value.String() != "" {
+				dateEnd, err = time.Parse(time.DateOnly, dateEndFlag.Value.String())
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				dateEnd = dateStart.Add(24 * time.Hour)
+			}
+		}
+
 		t, err := NewParsingTask(task, locations, targets, dateStart, dateEnd)
 		if err != nil {
 			return nil, fmt.Errorf("error creating parsing task: %v", err)
