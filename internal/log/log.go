@@ -20,13 +20,6 @@ func InitLogger(config *util.Config) {
 		Level: logrus.DebugLevel,
 	}
 
-	if config.SeqUrl.Value != "" {
-		seqHook := logruseq.NewSeqHook(config.SeqUrl.Value, logruseq.OptionAPIKey(config.SeqToken.Value))
-		logger.AddHook(seqHook)
-	} else {
-		logger.Warn("logger running without seq hook")
-	}
-
 	if config.Environment.Value == "production" {
 		logger.Formatter = &logrus.JSONFormatter{}
 	} else {
@@ -37,7 +30,15 @@ func InitLogger(config *util.Config) {
 		}
 	}
 
-	entry = logger.WithField("TraceId", uuid.New().String())
+	if config.SeqUrl.Value != "" {
+		seqHook := logruseq.NewSeqHook(config.SeqUrl.Value, logruseq.OptionAPIKey(config.SeqToken.Value))
+		logger.AddHook(seqHook)
+	} else {
+		logger.Warn("logger running without seq hook")
+	}
+
+	u := uuid.New().String()
+	entry = logger.WithField("TraceId", u)
 }
 
 func AddGlobalField(name string, value interface{}) Logger {
