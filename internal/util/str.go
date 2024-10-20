@@ -1,13 +1,15 @@
 package util
 
-import "strings"
+import (
+	"github.com/avito-tech/normalize"
+	"strings"
+)
 
-func NormalizeStr(input string) string {
-	var result string
-	result = input
+func Normalize(str string) string {
+	result := str
 
 	result = strings.Join(strings.Fields(result), "")
-	result = strings.ToLower(result)
+	result = normalize.Normalize(result)
 
 	result = strings.ReplaceAll(result, "\u00a0", "")
 	result = strings.ReplaceAll(result, "\u00A0", "")

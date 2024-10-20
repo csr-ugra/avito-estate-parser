@@ -5,7 +5,7 @@ import (
 	"flag"
 	"github.com/csr-ugra/avito-estate-parser/internal"
 	"github.com/csr-ugra/avito-estate-parser/internal/log"
-	"github.com/csr-ugra/avito-estate-parser/internal/parser_rod"
+	"github.com/csr-ugra/avito-estate-parser/internal/parser"
 	"github.com/csr-ugra/avito-estate-parser/internal/util"
 	"github.com/sirupsen/logrus"
 	"github.com/uptrace/bun"
@@ -33,7 +33,7 @@ func Run(ctx context.Context, connection bun.IDB, config *util.Config) error {
 	logger.WithField("TaskCount", len(tasks)).Info("retrieved tasks from db")
 
 	var results []*internal.ParsingTaskResult
-	results, err = parser_rod.Start(ctx, config, tasks)
+	results, err = parser.Start(ctx, config, tasks)
 
 	if err != nil {
 		return err

@@ -17,6 +17,8 @@ type EstateTargetModel struct {
 	Id            int    `bun:"id,pk,autoincrement"`
 	Name          string `bun:"name,notnull"`
 	UrlPart       string `bun:"url_part,notnull"`
+	FilterText    string `bun:"filter_text,notnull"`
+	SubfilterText string `bun:"subfilter_text"`
 }
 
 type EstateParsingTaskModel struct {

@@ -16,8 +16,10 @@ type parsingTaskLocation struct {
 }
 
 type parsingTaskTarget struct {
-	Id   int
-	Name string
+	Id            int
+	Name          string
+	FilterText    string
+	SubfilterText string
 }
 
 type ParsingTask struct {
