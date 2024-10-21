@@ -35,6 +35,6 @@ func CalendarBtn(t *time.Time) Selector {
 }
 
 func DailyRentWidgetPageCalendarDayButton(t *time.Time) Selector {
-	const template = "td[data-marker=\"day(%d)\"] > div"
+	const template = "td[data-marker=\"day(%d)\"] div"
 	return Selector(fmt.Sprintf(template, t.Day()))
 }

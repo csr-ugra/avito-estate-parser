@@ -139,7 +139,6 @@ func parseEstateListPage(page *rod.Page, task *internal.ParsingTask, log log.Log
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total estate count: %v", err)
 	}
-	log.WithField("TotalCount", estateObjectsCountTotal).Info("got total count of estate objects of {TotalCount}")
 
 	// select dates on calendar if calendar is present
 	// data-marker begins with "params[" and ends with "/day(%d)"
@@ -151,7 +150,7 @@ func parseEstateListPage(page *rod.Page, task *internal.ParsingTask, log log.Log
 		err = click(page, sel)
 
 		if errors.Is(err, &internal.ElementNotFoundError{}) {
-			log.WithField("Selector", sel).Warnf("calendar button not found, skipping click")
+			log.WithField("Selector", sel).Warn("calendar button not found, skipping click")
 			continue
 		}
 
@@ -171,7 +170,10 @@ func parseEstateListPage(page *rod.Page, task *internal.ParsingTask, log log.Log
 	if err != nil {
 		return nil, fmt.Errorf("failed to get free estate count: %v", err)
 	}
-	log.WithField("FreeCount", estateObjectsCountFree).Info("got count of free estate objects of {FreeCount}")
+	log.WithFields(logrus.Fields{
+		"FreeCount":  estateObjectsCountFree,
+		"TotalCount": estateObjectsCountTotal,
+	}).Info("got counts of estate objects: {FreeCount}/{TotalCount}")
 
 	result = &internal.ParsingTaskResult{
 		Task:             task,
@@ -200,13 +202,12 @@ func tryNavigateFromDailyRentWidget(page *rod.Page, task *internal.ParsingTask, 
 
 	time.Sleep(time.Second)
 
-	calendarMonth, err := getText(page, selector.DailyRentWidgetPageCalendarTitle)
-	if err != nil {
-		return err
-	}
-
 	for _, date := range []*time.Time{task.DateStart, task.DateEnd} {
 		// check if calendar month is the same as task date or need to change
+		calendarMonth, err := getText(page, selector.DailyRentWidgetPageCalendarTitle)
+		if err != nil {
+			return err
+		}
 		if !strings.HasPrefix(calendarMonth, util.MonthString(*date)) {
 			calendarNextMonthButton, err := getElement(page, selector.DailyRentWidgetPageCalendarNextMonthButton)
 			if err != nil {
@@ -221,6 +222,7 @@ func tryNavigateFromDailyRentWidget(page *rod.Page, task *internal.ParsingTask, 
 			return err
 		}
 		clickElement(calendarDateStartButton)
+		time.Sleep(time.Second)
 	}
 
 	time.Sleep(time.Second)
