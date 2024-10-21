@@ -109,7 +109,17 @@ func parsePage(page *rod.Page, task *internal.ParsingTask, log log.Logger) (resu
 
 	if strings.HasPrefix(pageTitle, "Недвижимость в ") {
 		log.Info("trying to navigate to target page from base estate page")
-		err = tryNavigateBaseEstatePage(page, task, log)
+		err = tryNavigateFromBaseEstateWidget(page, task, log)
+		if err != nil {
+			return nil, fmt.Errorf("error navigating to target page: %w", err)
+		}
+
+		return parseEstateListPage(page, task, log)
+	}
+
+	if strings.HasPrefix(pageTitle, "Жильё посуточно") {
+		log.Info("trying to navigate to target page from daily rent widget")
+		err = tryNavigateFromDailyRentWidget(page, task, log)
 		if err != nil {
 			return nil, fmt.Errorf("error navigating to target page: %w", err)
 		}
@@ -172,43 +182,88 @@ func parseEstateListPage(page *rod.Page, task *internal.ParsingTask, log log.Log
 	return result, nil
 }
 
+// navigate from estate daily rent widget,
+// eg. from https://www.avito.ru/hanty-mansiyskiy_ao/doma_dachi_kottedzhi/sdam/posutochno-ASgBAgICAkSUA9IQoAjKVQ
+func tryNavigateFromDailyRentWidget(page *rod.Page, task *internal.ParsingTask, log log.Logger) (err error) {
+	err = checkLocation(page, task, log)
+	if err != nil {
+		return err
+	}
+
+	log.Info("setting dates")
+	calendarButton, err := getElement(page, selector.DailyRentWidgetPageCalendarButton)
+	if err != nil {
+		return err
+	}
+
+	clickElement(calendarButton)
+
+	time.Sleep(time.Second)
+
+	calendarMonth, err := getText(page, selector.DailyRentWidgetPageCalendarTitle)
+	if err != nil {
+		return err
+	}
+
+	for _, date := range []*time.Time{task.DateStart, task.DateEnd} {
+		// check if calendar month is the same as task date or need to change
+		if !strings.HasPrefix(calendarMonth, util.MonthString(*date)) {
+			calendarNextMonthButton, err := getElement(page, selector.DailyRentWidgetPageCalendarNextMonthButton)
+			if err != nil {
+				return err
+			}
+
+			clickElement(calendarNextMonthButton)
+		}
+
+		calendarDateStartButton, err := getElement(page, selector.DailyRentWidgetPageCalendarDayButton(date))
+		if err != nil {
+			return err
+		}
+		clickElement(calendarDateStartButton)
+	}
+
+	time.Sleep(time.Second)
+
+	submitButton, err := tryGetElement(page, selector.WidgetSubmitButton, 3, time.Second/2)
+	if err != nil {
+		return err
+	}
+
+	waitNetwork := page.WaitNavigation(proto.PageLifecycleEventNameNetworkIdle)
+	clickElement(submitButton)
+	waitNetwork()
+
+	calendarResetButton, err := tryGetElement(page, selector.FilterCalendarResetButton, 3, time.Second/2)
+	if err != nil {
+		if errors.Is(err, internal.ElementNotFoundError{}) {
+			return nil
+		}
+		return err
+	}
+	clickElement(calendarResetButton)
+
+	return nil
+}
+
 // navigate from base estate page,
 // eg. from https://www.avito.ru/hanty-mansiyskiy_ao/nedvizhimost
-func tryNavigateBaseEstatePage(page *rod.Page, task *internal.ParsingTask, log log.Logger) (err error) {
-	log.Debug("checking location")
-	locationButton, err := getElement(page, selector.LocationChangeButton)
+func tryNavigateFromBaseEstateWidget(page *rod.Page, task *internal.ParsingTask, log log.Logger) (err error) {
+	err = checkLocation(page, task, log)
 	if err != nil {
 		return err
-	}
-
-	location, err := getElementText(locationButton)
-	if err != nil {
-		return err
-	}
-
-	isLocationMatchTask := util.Normalize(location) == util.Normalize(task.Location.Name)
-	if !isLocationMatchTask {
-		log.WithFields(logrus.Fields{
-			"LocationExpected": task.Location.Name,
-			"LocationActual":   location,
-		}).Info("location does not match expected, changing...")
-
-		err = changeLocation(page, task.Location.Name)
-		if err != nil {
-			return fmt.Errorf("error changing location: %w", err)
-		}
 	}
 
 	log.WithField("Target", task.Target.FilterText).
 		Info("setting estate type target")
-	estateTypeButton, err := getElement(page, selector.EstateTypeFilterButton)
+	estateTypeButton, err := getElement(page, selector.BaseEstateWidgetTypeFilterButton)
 	if err != nil {
 		return err
 	}
 
 	clickElement(estateTypeButton)
 
-	estateTypeListWrapper, err := getElement(page, selector.EstateTypeFilterDropdown)
+	estateTypeListWrapper, err := getElement(page, selector.BaseEstateWidgetTypeFilterDropdown)
 	if err != nil {
 		return err
 	}
@@ -240,14 +295,14 @@ func tryNavigateBaseEstatePage(page *rod.Page, task *internal.ParsingTask, log l
 	}
 
 	log.Info("setting target action to rent")
-	actionButton, err := getElement(page, selector.EstateActionFilterButton)
+	actionButton, err := getElement(page, selector.BaseEstateWidgetActionFilterButton)
 	if err != nil {
 		return err
 	}
 
 	clickElement(actionButton)
 
-	estateActionListWrapper, err := getElement(page, selector.EstateTypeFilterDropdown)
+	estateActionListWrapper, err := getElement(page, selector.BaseEstateWidgetTypeFilterDropdown)
 	if err != nil {
 		return err
 	}
@@ -279,14 +334,14 @@ func tryNavigateBaseEstatePage(page *rod.Page, task *internal.ParsingTask, log l
 	}
 
 	log.Info("setting target duration to daily rent")
-	durationButton, err := getElement(page, selector.EstateDurationDailyRentButton)
+	durationButton, err := getElement(page, selector.BaseEstateWidgetDurationDailyRentButton)
 	if err != nil {
 		return err
 	}
 
 	clickElement(durationButton)
 
-	submitButton, err := getElement(page, selector.EstateSubmitButton)
+	submitButton, err := getElement(page, selector.WidgetSubmitButton)
 	if err != nil {
 		return err
 	}
@@ -296,6 +351,36 @@ func tryNavigateBaseEstatePage(page *rod.Page, task *internal.ParsingTask, log l
 	waitNetwork()
 
 	return err
+}
+
+func checkLocation(page *rod.Page, task *internal.ParsingTask, log log.Logger) error {
+	log.Debug("checking location")
+	locationButton, err := getElement(page, selector.LocationChangeButton)
+	if err != nil {
+		return err
+	}
+
+	location, err := getElementText(locationButton)
+	if err != nil {
+		return err
+	}
+
+	isLocationMatchTask := util.Normalize(location) == util.Normalize(task.Location.Name)
+	if isLocationMatchTask {
+		return nil
+	}
+
+	log.WithFields(logrus.Fields{
+		"LocationExpected": task.Location.Name,
+		"LocationActual":   location,
+	}).Info("location does not match expected, changing...")
+
+	err = changeLocation(page, task.Location.Name)
+	if err != nil {
+		return fmt.Errorf("error changing location: %w", err)
+	}
+
+	return nil
 }
 
 func changeLocation(page *rod.Page, targetLocation string) (err error) {
