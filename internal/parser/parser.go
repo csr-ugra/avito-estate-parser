@@ -245,6 +245,12 @@ func tryNavigateFromDailyRentWidget(page *rod.Page, task *internal.ParsingTask, 
 	}
 	clickElement(calendarResetButton)
 
+	err = click(page, selector.SubmitFiltersBtn)
+	if err != nil {
+		return fmt.Errorf("failed to submit filters: %v", err)
+	}
+	time.Sleep(2 * time.Second)
+
 	return nil
 }
 
