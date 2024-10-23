@@ -373,7 +373,7 @@ func checkLocation(page *rod.Page, task *internal.ParsingTask, log log.Logger) e
 		return err
 	}
 
-	isLocationMatchTask := util.Normalize(location) == util.Normalize(task.Location.Name)
+	isLocationMatchTask := strings.HasPrefix(util.Normalize(location), util.Normalize(task.Location.Name))
 	if isLocationMatchTask {
 		return nil
 	}
