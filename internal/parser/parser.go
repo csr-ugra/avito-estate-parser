@@ -26,7 +26,7 @@ func Start(ctx context.Context, cfg *util.Config, tasks []*internal.ParsingTask)
 
 		taskLogger := logger.WithFields(logrus.Fields{
 			"TaskId":       task.Id,
-			"TargetId":     task.Target.Name,
+			"TargetId":     task.Target.Id,
 			"TargetName":   task.Target.Name,
 			"LocationId":   task.Location.Id,
 			"LocationName": task.Location.Name,
